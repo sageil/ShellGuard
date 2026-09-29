@@ -74,14 +74,16 @@ const FLAG_HANDLERS = {
   "--safe": (args) => args.suites.add("safe"),
   "--git": (args) => args.suites.add("git"),
   "--command": (args, argv, i) => {
-    const next = argv[++i];
+    const next = argv[i + 1];
     if (!next) throw new Error(`Missing value for --command`);
     args.commands.push(next);
+    argv[i + 1] = null;
   },
   "-c": (args, argv, i) => {
-    const next = argv[++i];
+    const next = argv[i + 1];
     if (!next) throw new Error(`Missing value for -c`);
     args.commands.push(next);
+    argv[i + 1] = null;
   },
   "--help": (args) => { args.help = true; },
   "-h": (args) => { args.help = true; },
@@ -90,6 +92,7 @@ const FLAG_HANDLERS = {
 function parseArgs(argv) {
   const args = { suites: new Set(), commands: [] };
   for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === null) continue;
     const handler = FLAG_HANDLERS[argv[i]];
     if (!handler) throw new Error(`Unknown argument: ${argv[i]}`);
     handler(args, argv, i);

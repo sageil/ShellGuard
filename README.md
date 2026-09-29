@@ -4,9 +4,9 @@ Evaluate shell command safety using [Kev](https://github.com/jaredpalmer/kev), a
 
 ## What it does
 
-Sends shell commands to a Kev server and asks whether they are safe to execute. The model returns calibrated probabilities for "safe" vs "unsafe" and "mutates" vs "does not mutate" (for git commands).
+Sends commands to a Kev server and asks whether they are safe to execute. Commands are considered safe when their target is within allowed directories and git commands are safe anywhere when they are classified as none-destructive.
 
-Before sending a command to the model, the script resolves virtual paths (`$MYAPP_SCRATCH_DIR`, `$MYAPP_WORKSPACE_ROOT`, `/large_tool_results/...`, `/conversation-history/...`) to absolute paths so the model sees concrete locations instead of env vars it cannot expand.
+Before sending a command to the model, the script resolves configurable virtual paths (`$MYAPP_SCRATCH_DIR`, `$MYAPP_WORKSPACE_ROOT`, `/large_tool_results/...`, `/conversation-history/...`) to absolute paths.
 
 ## Prerequisites
 
@@ -76,9 +76,3 @@ node src/index.js -c "cat /etc/passwd" -c "git reset --hard HEAD"
 2. **API call** — The resolved command, a list of allowed roots, and the execution path are sent to Kev as the `state`. A `choice` question with `true`/`false` criteria asks the model to classify the command.
 3. **Results** — The model's probabilities for each answer are printed in a table.
 
-## Project structure
-
-```
-src/index.js   — CLI entry point, path resolution, API calls
-src/cases.js   — Evaluation questions and test cases
-```
