@@ -142,24 +142,29 @@ async function runSuite(title, question, cases) {
   for (const row of rows) console.log(row.join("  "));
 }
 
-const SUITE_FLAGS = { "--safe": "safe", "--git": "git" };
-const COMMAND_FLAGS = new Set(["--command", "-c"]);
+const FLAG_HANDLERS = {
+  "--safe": (args) => args.suites.add("safe"),
+  "--git": (args) => args.suites.add("git"),
+  "--command": (args, argv, i) => {
+    const next = argv[++i];
+    if (!next) throw new Error(`Missing value for --command`);
+    args.commands.push(next);
+  },
+  "-c": (args, argv, i) => {
+    const next = argv[++i];
+    if (!next) throw new Error(`Missing value for -c`);
+    args.commands.push(next);
+  },
+  "--help": (args) => { args.help = true; },
+  "-h": (args) => { args.help = true; },
+};
 
 function parseArgs(argv) {
   const args = { suites: new Set(), commands: [] };
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg in SUITE_FLAGS) {
-      args.suites.add(SUITE_FLAGS[arg]);
-    } else if (COMMAND_FLAGS.has(arg)) {
-      const next = argv[++i];
-      if (!next) throw new Error(`Missing value for ${arg}`);
-      args.commands.push(next);
-    } else if (arg === "--help" || arg === "-h") {
-      args.help = true;
-    } else {
-      throw new Error(`Unknown argument: ${arg}`);
-    }
+    const handler = FLAG_HANDLERS[argv[i]];
+    if (!handler) throw new Error(`Unknown argument: ${argv[i]}`);
+    handler(args, argv, i);
   }
   if (args.suites.size === 0 && args.commands.length === 0) {
     args.suites.add("safe");
