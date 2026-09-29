@@ -142,13 +142,16 @@ async function runSuite(title, question, cases) {
   for (const row of rows) console.log(row.join("  "));
 }
 
+const SUITE_FLAGS = { "--safe": "safe", "--git": "git" };
+const COMMAND_FLAGS = new Set(["--command", "-c"]);
+
 function parseArgs(argv) {
   const args = { suites: new Set(), commands: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--safe") args.suites.add("safe");
-    else if (arg === "--git") args.suites.add("git");
-    else if (arg === "--command" || arg === "-c") {
+    if (arg in SUITE_FLAGS) {
+      args.suites.add(SUITE_FLAGS[arg]);
+    } else if (COMMAND_FLAGS.has(arg)) {
       const next = argv[++i];
       if (!next) throw new Error(`Missing value for ${arg}`);
       args.commands.push(next);
