@@ -6,17 +6,10 @@ const home = os.homedir();
 
 export const resolvePath = (target) => {
   const absolute = path.resolve(target);
-  const pending = [];
-  let current = absolute;
-  for (;;) {
-    try {
-      return path.join(realpathSync(current), ...pending.reverse());
-    } catch {
-      const parent = path.dirname(current);
-      if (parent === current) return absolute;
-      pending.push(path.basename(current));
-      current = parent;
-    }
+  try {
+    return realpathSync(absolute);
+  } catch {
+    return absolute;
   }
 };
 
