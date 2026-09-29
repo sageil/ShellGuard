@@ -1,0 +1,21 @@
+{
+  "name": "cmd-eval",
+  "version": "1.0.0",
+  "description": "Evaluate shell command safety using Kev decision models",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "eval": "node src/index.js"
+  },
+  "keywords": [
+    "kev",
+    "command-evaluation",
+    "safety",
+    "decision-model"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}
