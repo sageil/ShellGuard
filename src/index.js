@@ -1,48 +1,17 @@
-import { mkdtempSync, realpathSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { SAFE_QUESTION, GIT_QUESTION, SAFE_CASES, GIT_CASES } from "./cases.js";
+import { createRoots, resolveCommand } from "./paths.js";
 
 const home = os.homedir();
 const cwd = process.cwd();
-
-const resolvePath = (target) => {
-  const absolute = path.resolve(target);
-  const pending = [];
-  let current = absolute;
-  for (;;) {
-    try {
-      return path.join(realpathSync(current), ...pending.reverse());
-    } catch {
-      const parent = path.dirname(current);
-      if (parent === current) return absolute;
-      pending.push(path.basename(current));
-      current = parent;
-    }
-  }
-};
 
 const ENDPOINT = process.env.KEV_URL ?? "http://localhost:8009/v1/systemone";
 const API_KEY = process.env.KEV_API_KEY ?? "";
 const MODEL = process.env.MODEL ?? "kev-latest";
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 30_000);
 
-const configRoot = path.join(home, ".config", "myapp");
-const dataRoot = path.join(home, ".local", "share", "myapp");
-const contextRoot = path.join(dataRoot, "context");
-
-const roots = {
-  workspaceRoot: resolvePath(cwd),
-  globalAgentRoot: resolvePath(path.join(home, ".agents")),
-  userConfigRoot: resolvePath(configRoot),
-  userDataRoot: resolvePath(dataRoot),
-  conversationHistoryRoot: resolvePath(
-    path.join(contextRoot, "conversation-history"),
-  ),
-  largeToolResultsRoot: resolvePath(path.join(contextRoot, "large-tool-results")),
-  scratchRoot: mkdtempSync(path.join(os.tmpdir(), "myapp-scratch-")),
-  builtinSkillsRoot: resolvePath(path.join(cwd, ".agents", "skills")),
-};
+const roots = createRoots(cwd);
 
 const SAFE_PATHS = [
   roots.workspaceRoot,
@@ -54,47 +23,6 @@ const SAFE_PATHS = [
   roots.scratchRoot,
   roots.builtinSkillsRoot,
 ].filter((p) => typeof p === "string" && p !== "");
-
-const VIRTUAL_ROUTES = [
-  [/^\/large_tool_results(?:\/|$)/, roots.largeToolResultsRoot],
-  [/^\/conversation-history(?:\/|$)/, roots.conversationHistoryRoot],
-];
-
-const resolveToken = (token) => {
-  if (!token) return undefined;
-  const virtual = VIRTUAL_ROUTES.find(([pattern]) => pattern.test(token));
-  if (virtual) return resolvePath(path.join(virtual[1], token.replace(virtual[0], "")));
-  if (!/\$\{?MYAPP_(SCRATCH_DIR|WORKSPACE_ROOT)\}?/g.test(token)) return undefined;
-  return resolvePath(
-    token
-      .replace(/\$\{?MYAPP_SCRATCH_DIR\}?/g, roots.scratchRoot)
-      .replace(/\$\{?MYAPP_WORKSPACE_ROOT\}?/g, roots.workspaceRoot),
-  );
-};
-
-const isPathLike = (word) => /[/~$]/.test(word);
-
-const extractTokens = (command) => {
-  const stripped = command.replace(/\s-[^\s]+/g, " ");
-  const unquote = (tokens) =>
-    tokens.map((t) => t.replace(/^["']|["']$/g, "")).filter(isPathLike);
-  const quoted = unquote(stripped.match(/"([^"]*)"|'([^']*)'/g) ?? []);
-  const bare = stripped
-    .replace(/"[^"]*"|'[^']*'/g, " ")
-    .split(/\s+/)
-    .filter(isPathLike);
-  return [...new Set([...quoted, ...bare])];
-};
-
-const resolveCommand = (command) => {
-  const tokens = extractTokens(command).sort((a, b) => b.length - a.length);
-  let resolved = command;
-  for (const token of tokens) {
-    const target = resolveToken(token);
-    if (target) resolved = resolved.split(token).join(target);
-  }
-  return resolved;
-};
 
 
 
@@ -122,7 +50,7 @@ const render = (answer) => {
 async function runSuite(title, question, cases) {
   const rows = [];
   for (const [label, command] of cases) {
-    const resolved = resolveCommand(command);
+    const resolved = resolveCommand(command, roots);
     const state = {
       command: resolved,
       allowed_roots: SAFE_PATHS,
