@@ -184,8 +184,8 @@ Options:
   -h, --help      Show this help message
 
 Environment variables:
-  VON_URL             Kev server endpoint (default: http://localhost:8009/v1/systemone)
-  LOCALJEV_API_KEY    API key for the Kev server
+  KEV_URL             Kev server endpoint (default: http://localhost:8009/v1/systemone)
+  KEV_API_KEY         API key for the Kev server
   MODEL               Model name (default: kev-latest)
   FETCH_TIMEOUT_MS    Request timeout in ms (default: 30000)
 `);
