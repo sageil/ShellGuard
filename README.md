@@ -4,9 +4,13 @@ Evaluate shell command safety using [Kev](https://github.com/jaredpalmer/kev), a
 
 ## What it does
 
-Sends commands to a Kev server and asks whether they are safe to execute. Commands are considered safe when their target is within allowed directories and git commands are safe anywhere when they are classified as none-destructive.
+Sends commands to a Kev server and asks whether they are safe to execute. Commands are evaluated across four focused questions:
 
-Before sending a command to the model, the script resolves configurable virtual paths (`$MYAPP_SCRATCH_DIR`, `$MYAPP_WORKSPACE_ROOT`, `/large_tool_results/...`, `/conversation-history/...`) to absolute paths.
+- **scoped** — Are all filesystem operations within `allowed_roots`?
+- **perm change** — Does the command change file permissions or ownership?
+- **priv esc** — Does the command elevate privileges?
+- **git mut** — Does the command mutate source control?
+
 
 ## Prerequisites
 
@@ -34,7 +38,7 @@ For other model sizes and deployment options (Modal, Hugging Face Spaces), see t
 node src/index.js
 ```
 
-This runs both the **safe** and **git** evaluation suites and prints results to stdout.
+This runs all evaluation suites (path-within, perm-change, priv-esc, and git-mut) and prints results to stdout.
 
 ### Options
 
@@ -42,8 +46,11 @@ This runs both the **safe** and **git** evaluation suites and prints results to 
 node src/index.js [options]
 
 Options:
-  --safe          Run the safe command evaluation suite
-  --git           Run the git mutation evaluation suite
+  --scoped        Run only the scoped question
+  --perm-change   Run only the permission-change question
+  --priv-esc      Run only the privilege-escalation question
+  --git-mut       Run only the git mutation question
+  --all           Run all evaluation suites
   -c, --command   Evaluate a custom command (can be repeated)
   -h, --help      Show help
 ```
@@ -51,8 +58,11 @@ Options:
 Examples:
 
 ```bash
-# Run only the safe suite
-node src/index.js --safe
+# Run only the scoped question
+node src/index.js --scoped
+
+# Run all suites
+node src/index.js --all
 
 # Evaluate a custom command
 node src/index.js -c "rm -rf node_modules"

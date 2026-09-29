@@ -1,6 +1,6 @@
 import os from "node:os";
 import path from "node:path";
-import { SAFE_QUESTION, GIT_QUESTION, SAFE_CASES, GIT_CASES } from "./cases.js";
+import { QUESTIONS, SCOPED_CASES, PERM_CHANGE_CASES, PRIV_ESC_CASES, GIT_CASES } from "./cases.js";
 import { createRoots, resolveCommand } from "./paths.js";
 
 const home = os.homedir();
@@ -13,7 +13,7 @@ const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 30_000);
 
 const roots = createRoots(cwd);
 
-const SAFE_PATHS = [
+const ALLOWED_PATHS = [
   roots.workspaceRoot,
   roots.globalAgentRoot,
   roots.userConfigRoot,
@@ -26,14 +26,15 @@ const SAFE_PATHS = [
 
 
 
-async function call(state, question) {
+async function call(state, questions) {
+  const body = { model: MODEL, state, questions };
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
     },
-    body: JSON.stringify({ model: MODEL, state, questions: { q: question } }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   const text = await res.text();
@@ -41,24 +42,25 @@ async function call(state, question) {
   return JSON.parse(text);
 }
 
-const render = (answer) => {
-  if (!answer || answer.type !== "choice") return "n/a";
-  const { true: t, false: f } = answer.probabilities;
-  return `${t.toFixed(2)}/${f.toFixed(2)}`;
-};
 
-async function runSuite(title, question, cases) {
+async function runSuite(title, questions, cases) {
   const rows = [];
   for (const [label, command] of cases) {
     const resolved = resolveCommand(command, roots);
     const state = {
       command: resolved,
-      allowed_roots: SAFE_PATHS,
+      allowed_roots: ALLOWED_PATHS,
       execution_path: cwd,
     };
     try {
-      const body = await call(state, question);
-      rows.push([label.padEnd(18), resolved.replace(/\s+/g, " ").slice(0, 46).padEnd(46), render(body.answers.q)]);
+      const body = await call(state, questions);
+      const results = Object.entries(body.answers).map(([key, answer]) => {
+        if (!answer || answer.type !== "choice") return `${key}: n/a`;
+        const label = questions[key]?.label ?? key;
+        const { true: t, false: f } = answer.probabilities;
+        return `${label}: ${t.toFixed(2)}/${f.toFixed(2)}`;
+      });
+      rows.push([label.padEnd(18), resolved.replace(/\s+/g, " ").slice(0, 46).padEnd(46), results.join("  ")]);
     } catch (error) {
       rows.push([label.padEnd(18), resolved.replace(/\s+/g, " ").slice(0, 46).padEnd(46), `ERROR: ${error.message}`]);
     }
@@ -71,8 +73,13 @@ async function runSuite(title, question, cases) {
 }
 
 const FLAG_HANDLERS = {
-  "--safe": (args) => args.suites.add("safe"),
-  "--git": (args) => args.suites.add("git"),
+  "--scoped": (args) => args.suites.add("scoped"),
+  "--perm-change": (args) => args.suites.add("perm_change"),
+  "--priv-esc": (args) => args.suites.add("priv_esc"),
+  "--git-mut": (args) => args.suites.add("git_mut"),
+  "--all": (args) => {
+    for (const q of QUESTIONS) args.suites.add(q.key);
+  },
   "--command": (args, argv, i) => {
     const next = argv[i + 1];
     if (!next) throw new Error(`Missing value for --command`);
@@ -98,7 +105,7 @@ function parseArgs(argv) {
     handler(args, argv, i);
   }
   if (args.suites.size === 0 && args.commands.length === 0) {
-    args.suites.add("safe");
+    args.suites.add("constrained");
     args.suites.add("git");
   }
   return args;
@@ -109,16 +116,19 @@ function printHelp() {
 Usage: node src/index.js [options]
 
 Options:
-  --safe          Run the safe command evaluation suite
-  --git           Run the git mutation evaluation suite
+  --scoped        Run only the scoped question
+  --perm-change   Run only the permission-change question
+  --priv-esc      Run only the privilege-escalation question
+  --git-mut       Run only the git mutation question
+  --all           Run all questions
   -c, --command   Evaluate a custom command (can be repeated)
   -h, --help      Show this help message
 
 Environment variables:
   KEV_URL             Kev server endpoint (default: http://localhost:8009/v1/systemone)
-  KEV_API_KEY         API key for the Kev server
-  MODEL               Model name (default: kev-latest)
-  FETCH_TIMEOUT_MS    Request timeout in ms (default: 30000)
+  KEV_API_KEY         API key (if server requires auth) | _(none)_ |
+  MODEL               Model name | kev-latest |
+  FETCH_TIMEOUT_MS    Request timeout in milliseconds | 30000 |
 `);
 }
 
@@ -135,14 +145,26 @@ if (args.help) {
   process.exit(0);
 }
 
+const formatQuestions = (questions) =>
+  Object.fromEntries(questions.map((q) => [q.key, { label: q.label, type: q.type, instructions: q.instructions, criteria: q.criteria }]));
+
+const CASES_BY_KEY = {
+  scoped: SCOPED_CASES,
+  perm_change: PERM_CHANGE_CASES,
+  priv_esc: PRIV_ESC_CASES,
+  git_mut: GIT_CASES,
+};
+
+const selectedQuestions = args.suites.size > 0
+  ? QUESTIONS.filter((q) => args.suites.has(q.key))
+  : QUESTIONS;
+
 if (args.commands.length > 0) {
-  await runSuite("safe t/f", SAFE_QUESTION, args.commands.map((c) => ["custom", c]));
-}
-
-if (args.suites.has("safe")) {
-  await runSuite("safe t/f", SAFE_QUESTION, SAFE_CASES);
-}
-
-if (args.suites.has("git")) {
-  await runSuite("git_mut t/f", GIT_QUESTION, GIT_CASES);
+  for (const q of selectedQuestions) {
+    await runSuite(`${q.label} t/f`, formatQuestions([q]), args.commands.map((c) => ["custom", c]));
+  }
+} else {
+  for (const q of selectedQuestions) {
+    await runSuite(`${q.label} t/f`, formatQuestions([q]), CASES_BY_KEY[q.key]);
+  }
 }
