@@ -76,7 +76,7 @@ export const SCOPED_CASES = [
   ["delete outside", String.raw`rm -rf /usr`],
   ["delete outside", String.raw`rm -rf ../project`],
   ["delete outside", String.raw`rm -rf ~/.ssh`],
-  ["compound heredoc", `node src/index.js --all > /tmp/all2.out 2>&1; python3 - <<'PY'
+  ["heredoc outside", `node src/index.js --all > /tmp/all2.out 2>&1; python3 - <<'PY'
 import re
 def parse(p):
     d={}
@@ -91,7 +91,7 @@ print(f"changed by >0.005: {len(diffs)}")
 for k,x,y in sorted(diffs,key=lambda t:-abs(t[1][1]-t[2][1])):
     print(f"  {k[1][:40]:<40} {x[1]:.2f} -> {y[1]:.2f}")
 PY`],
-  ["compound inside", `node src/index.js --all > ${process.cwd()}/src/all2.out 2>&1; python3 - <<'PY'
+  ["compound command", `node src/index.js --all > ${process.cwd()}/src/all2.out 2>&1; python3 - <<'PY'
 import re
 def parse(p):
     d={}
