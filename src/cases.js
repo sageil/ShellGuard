@@ -32,7 +32,7 @@ export const QUESTIONS = [
   },
   {
     key: "priv_esc",
-    label: "privledge escalation",
+    label: "privilege escalation",
     type: "choice",
     instructions: BASE_INSTRUCTIONS + "Determine whether the command elevates privileges.",
     criteria: {
