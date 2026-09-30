@@ -1,4 +1,4 @@
-# cmd-eval
+# shellguard
 
 Evaluate shell command safety using [Kev](https://github.com/jaredpalmer/kev), a small decision model you can run locally.
 
