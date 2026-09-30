@@ -105,8 +105,8 @@ function parseArgs(argv) {
     handler(args, argv, i);
   }
   if (args.suites.size === 0 && args.commands.length === 0) {
-    args.suites.add("constrained");
-    args.suites.add("git");
+    args.suites.add("scoped");
+    args.suites.add("git_mut");
   }
   return args;
 }
