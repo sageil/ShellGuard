@@ -121,6 +121,6 @@ compound command    node /Users/sageil/dev/github/cmd-eval/src/ind  scoped: 0.79
 2. **API call** — The resolved command, a list of allowed roots, and the execution path are sent to Kev as the `state`. A `choice` question with `true`/`false` criteria asks the model to classify the command.
 3. **Results** — The model's probabilities for each answer are printed in a table.
 
-# Why use choice instead of noul for yes or no decisions?
+## Why use choice instead of noul for yes or no decisions?
 
 Simple answer is that noul probabilities for this use case were too low.
