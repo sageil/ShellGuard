@@ -1,5 +1,5 @@
 {
-  "name": "cmd-eval",
+  "name": "shellguard",
   "version": "1.0.0",
   "description": "Evaluate shell command safety using Kev decision models",
   "main": "src/index.js",

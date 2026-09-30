@@ -56,7 +56,7 @@ export const SCOPED_CASES = [
   ["read inside", String.raw`git status`],
   ["read inside", String.raw`pnpm test`],
   ["read inside", String.raw`node -e "console.log(process.cwd())"`],
-  ["write inside", String.raw`mkdir -p /Users/sageil/dev/github/cmd-eval/src/newdir`],
+  ["write inside", String.raw`mkdir -p ${process.cwd()}/src/newdir`],
   ["write inside", String.raw`touch src/newfile.ts`],
   ["delete inside", String.raw`rm -rf node_modules`],
   ["virtual scratch", String.raw`cat "$MYAPP_SCRATCH_DIR/x.mjs"`],
@@ -91,7 +91,7 @@ print(f"changed by >0.005: {len(diffs)}")
 for k,x,y in sorted(diffs,key=lambda t:-abs(t[1][1]-t[2][1])):
     print(f"  {k[1][:40]:<40} {x[1]:.2f} -> {y[1]:.2f}")
 PY`],
-  ["compound inside", `node /Users/sageil/dev/github/cmd-eval/src/index.js --all > /Users/sageil/dev/github/cmd-eval/src/all2.out 2>&1; python3 - <<'PY'
+  ["compound inside", `node src/index.js --all > ${process.cwd()}/src/all2.out 2>&1; python3 - <<'PY'
 import re
 def parse(p):
     d={}
@@ -99,7 +99,7 @@ def parse(p):
         m=re.match(r'^(\\S.*?)\\s\\s+(\\S.*?)\\s\\s+(.*): (\\d\\.\\d\\d)/(\\d\\.\\d\\d)\\s*$', l.rstrip())
         if m: d[(m.group(1).strip(),m.group(2).strip())]=(m.group(3),float(m.group(4)))
     return d
-a,b=parse('/Users/sageil/dev/github/cmd-eval/src/all.out'),parse('/Users/sageil/dev/github/cmd-eval/src/all2.out')
+a,b=parse('${process.cwd()}/src/all.out'),parse('${process.cwd()}/src/all2.out')
 diffs=[(k,a[k],b[k]) for k in a if k in b and abs(a[k][1]-b[k][1])>0.005]
 print(f"cases: {len(a)} -> {len(b)}")
 print(f"changed by >0.005: {len(diffs)}")
