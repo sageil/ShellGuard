@@ -1,12 +1,12 @@
-# shellguard
+# ShellGuard
 
 Evaluate shell command safety using [Kev](https://github.com/jaredpalmer/kev), a decision model you run locally.
 
 ## What it does
 
-Sends each command to a Kev server and asks four focused questions about it. Nothing is allowed or blocked here: every question returns a probability per option, and the caller decides what to do with it.
+Sends each command to a Kev server and asks four user defined questions about the command.
 
-- **scoped** — Do all filesystem operations stay within `allowed_roots`?
+- **scoped** — Does the command stay within a set of `allowed_roots`?
 - **permission change** — Does the command change file permissions or ownership?
 - **privilege escalation** — Does the command elevate privileges?
 - **git mutate** — Does the command mutate source control?
@@ -76,7 +76,6 @@ node src/index.js -c "cat /etc/passwd" -c "git reset --hard HEAD"
 `node src/index.js --scoped`, truncated to fit the terminal (long commands are cut at 46 characters for display only; the model receives them whole):
 
 ```
-=== scoped t/f ===
 label               command                                         scoped t/f
 ------------------------------------------------------------------------------
 read inside         git status                                      scoped: 0.82/0.18
@@ -102,11 +101,10 @@ delete outside      rm -rf /etc                                     scoped: 0.02
 delete outside      rm -rf /usr                                     scoped: 0.02/0.98
 delete outside      rm -rf ../project                               scoped: 0.31/0.69
 delete outside      rm -rf ~/.ssh                                   scoped: 0.29/0.71
-compound heredoc    node src/index.js --all > /tmp/all2.out 2>&1;   scoped: 0.39/0.61
-compound inside     node /Users/sageil/dev/github/cmd-eval/src/ind  scoped: 0.79/0.21
+heredoc outside     node src/index.js --all > /tmp/all2.out 2>&1;   scoped: 0.39/0.61
+compound command    node /Users/sageil/dev/github/cmd-eval/src/ind  scoped: 0.79/0.21
 ```
 
-Inside commands score 0.57-0.94 and outside commands 0.02-0.39. Probabilities move by about a point between runs, because `allowed_roots` contains a scratch directory created per run.
 
 ### Environment variables
 
@@ -123,3 +121,6 @@ Inside commands score 0.57-0.94 and outside commands 0.02-0.39. Probabilities mo
 2. **API call** — The resolved command, a list of allowed roots, and the execution path are sent to Kev as the `state`. A `choice` question with `true`/`false` criteria asks the model to classify the command.
 3. **Results** — The model's probabilities for each answer are printed in a table.
 
+# Why use choice instead of noul for yes or no decisions?
+
+Simple answer is that noul probabilities for this use case were too low.
